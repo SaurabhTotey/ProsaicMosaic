@@ -28,3 +28,42 @@ for (var i = 0; i < outerResolution; i++) {
     }
     mosaic.appendChild(document.createElement('br'));
 }
+
+//Takes in the image and sets its source to a random image from Flickr
+function setSourceToRandom(image) {
+    $.getJSON("http://api.flickr.com/services/feeds/photos_public.gne?jsoncallback=?",
+        {
+            tagmode: "any",
+            format: "json"
+        },
+        function(data) {
+            var rnd = Math.floor(Math.random() * data.items.length);
+            image.src = data.items[rnd]['media']['m'].replace("_m", "_b");
+        }
+    );
+}
+
+//TODO: temporary
+for (var i = 0; i < outerResolution; i++) {
+    for (var j = 0; j < outerResolution; j++) {
+        setSourceToRandom(document.getElementById(idForLocation(i, j)));
+    }
+}
+
+//The actual function that handles making a mosaic of an image
+function makeMosaicOf(image) {
+    function getPixelDataForImage(image) {
+        var pixelData = document.createElement('canvas');
+        pixelData.width = outerResolution;
+        pixelData.height = outerResolution;
+        pixelData.getContext('2d').drawImage(image, 0, 0);
+        data = [];
+        for (var i = 0; i < outerResolution; i++) {
+            data.push([]);
+            for (var j = 0; j < outerResolution; j++) {
+                data[i][j].push(pixelData.getImageData(j, i, 1, 1).data);
+            }
+        }
+        return data;
+    }
+}
