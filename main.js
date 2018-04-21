@@ -5,9 +5,9 @@
  */
 
 //Gets the mosiac table that will store an image in each cell to become the larger image
-var table = document.getElementById('mosaic-container');
-table.width = window.innerWidth;
-table.height = window.innerHeight;
+var mosaic = document.getElementById('mosaic-container');
+mosaic.width = window.innerWidth;
+mosaic.height = window.innerHeight;
 
 //The constants that represent the resolutions of the outer and inner images; resolutions are squares
 var outerResolution = 75;
@@ -20,12 +20,11 @@ function idForLocation(row, column) {
 
 //Initializes the table cells
 for (var i = 0; i < outerResolution; i++) {
-    table.appendChild(document.createElement('tr'));
     for (var j = 0; j < outerResolution; j++) {
-        table.lastChild.appendChild(document.createElement('td'));
-        table.lastChild.lastChild.appendChild(document.createElement('img'));
-        table.lastChild.lastChild.lastChild.id = idForLocation(i, j);
-        table.lastChild.lastChild.lastChild.width = innerResolution;
-        table.lastChild.lastChild.lastChild.height = innerResolution;
+        mosaic.appendChild(document.createElement('img'));
+        mosaic.lastChild.id = idForLocation(i, j);
+        mosaic.lastChild.width = innerResolution;
+        mosaic.lastChild.height = innerResolution;
     }
+    mosaic.appendChild(document.createElement('br'));
 }
