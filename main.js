@@ -23,10 +23,23 @@ for (var i = 0; i < outerResolution; i++) {
     for (var j = 0; j < outerResolution; j++) {
         mosaic.appendChild(document.createElement('img'));
         mosaic.lastChild.id = idForLocation(i, j);
+        mosaic.lastChild.src = "null.png";
         mosaic.lastChild.width = innerResolution;
         mosaic.lastChild.height = innerResolution;
     }
     mosaic.appendChild(document.createElement('br'));
+}
+
+//Gets whether the mosaic has been completed or not
+function isMosaicComplete() {
+    for (var i = 0; i < outerResolution; i++) {
+        for (var j = 0; j < outerResolution; j++) {
+            if (document.getElementById(idForLocation(i, j)).src.endsWith("null.png")) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 //Takes in an image and sets its source to a random image from Flickr
@@ -50,12 +63,13 @@ function makeMosaicOf(image) {
         var pixelData = document.createElement('canvas');
         pixelData.width = outerResolution;
         pixelData.height = outerResolution;
-        pixelData.getContext('2d').drawImage(image, 0, 0);
+        var renderer = pixelData.getContext('2d');
+        renderer.drawImage(image, 0, 0, outerResolution, outerResolution);
         data = [];
         for (var i = 0; i < outerResolution; i++) {
             data.push([]);
             for (var j = 0; j < outerResolution; j++) {
-                data[i][j].push(pixelData.getImageData(j, i, 1, 1).data);
+                data[i].push(renderer.getImageData(j, i, 1, 1).data);
             }
         }
         return data;
@@ -65,18 +79,55 @@ function makeMosaicOf(image) {
         var pixelData = document.createElement('canvas');
         pixelData.width = innerResolution;
         pixelData.height = innerResolution;
-        pixelData.getContext('2d').drawImage(image, 0, 0);
+        var renderer = pixelData.getContext('2d');
+        renderer.drawImage(image, 0, 0, innerResolution, innerResolution);
         colorCounts = {};
         for (var i = 0; i < innerResolution; i++) {
             for (var j = 0; j < innerResolution; j++) {
-                var color = pixelData.getImageData(j, i, 1, 1).data;
-                if (!color in colorCounts) {
-                    colorCounts[color] = 1;
-                } else {
+                var color = renderer.getImageData(j, i, 1, 1).data;
+                if (color in colorCounts) {
                     colorCounts[color] += 1;
+                } else {
+                    colorCounts[color] = 1;
                 }
             }
         }
-        return Object.keys(colorCounts).reduce((a, b) => obj[a] > obj[b] ? a : b);
+        return JSON.parse("[" + Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b) + "]");
     }
+    //Sets all images to have no source
+    for (var i = 0; i < outerResolution; i++) {
+        for (var j = 0; j < outerResolution; j++) {
+            document.getElementById(idForLocation(i, j)).src = "null.png";
+        }
+    }
+    //How much each inner image can differ from the overall image in terms of color
+    var colorFaultTolerance = 20;
+    //The colors for the image to draw
+    var outerImageColors = getPixelDataForImage(image);
+    //The actual part of the program that sets the mosaic
+    var mosaicFiller = window.setInterval(function() {
+        if (isMosaicComplete()) {
+            window.clearInterval(mosaicFiller);
+            return;
+        }
+        var innerImageCandidate = document.createElement('img');
+        setSourceToRandom(innerImageCandidate);
+        window.setTimeout(function() {
+            var imageCandidateColor = reduceImageToColor(innerImageCandidate);
+            for (var i = 0; i < outerResolution; i++) {
+                for (var j = 0; j < outerResolution; j++) {
+                    if (outerImageColors[i][j].map((a, index) => Math.pow(a - imageCandidateColor[index], 2)).reduce((a, b) => a + b, 0) < Math.pow(colorFaultTolerance, 2)) {
+                        document.getElementById(idForLocation(i, j)).src = innerImageCandidate.src;
+                    }
+                }
+            }
+        }, 50);
+    }, 50);
 }
+
+//Starts the program by making a mosaic of a random image
+var randomImage = document.createElement('img');
+setSourceToRandom(randomImage);
+window.setTimeout(function() {
+    makeMosaicOf(randomImage);
+}, 50);
