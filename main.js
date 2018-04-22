@@ -51,49 +51,52 @@ function setSourceToRandom(image) {
         },
         function(data) {
             var rnd = Math.floor(Math.random() * data.items.length);
+            image.crossOrigin = "Anonymous";
             image.src = data.items[rnd]['media']['m'].replace("_m", "_b");
         }
     );
 }
 
+//Gets a 2d array of colors that represents the image; dimensions are outerResolution x outerResolution
+function getPixelDataForImage(image) {
+    var pixelData = document.createElement('canvas');
+    pixelData.width = outerResolution;
+    pixelData.height = outerResolution;
+    var renderer = pixelData.getContext('2d');
+    renderer.drawImage(image, 0, 0, outerResolution, outerResolution);
+    data = [];
+    for (var i = 0; i < outerResolution; i++) {
+        data.push([]);
+        for (var j = 0; j < outerResolution; j++) {
+            data[i].push(renderer.getImageData(j, i, 1, 1).data);
+        }
+    }
+    return data;
+}
+
+//Gets the dominant color of an image if stretched to innerResolution x innerResolution
+function reduceImageToColor(image) {
+    var pixelData = document.createElement('canvas');
+    pixelData.width = innerResolution;
+    pixelData.height = innerResolution;
+    var renderer = pixelData.getContext('2d');
+    renderer.drawImage(image, 0, 0, innerResolution, innerResolution);
+    colorCounts = {};
+    for (var i = 0; i < innerResolution; i++) {
+        for (var j = 0; j < innerResolution; j++) {
+            var color = renderer.getImageData(j, i, 1, 1).data;
+            if (color in colorCounts) {
+                colorCounts[color] += 1;
+            } else {
+                colorCounts[color] = 1;
+            }
+        }
+    }
+    return JSON.parse("[" + Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b) + "]");
+}
+
 //The actual function that handles making a mosaic of an image
 function makeMosaicOf(image) {
-    //Gets a 2d array of colors that represents the image; dimensions are outerResolution x outerResolution
-    function getPixelDataForImage(image) {
-        var pixelData = document.createElement('canvas');
-        pixelData.width = outerResolution;
-        pixelData.height = outerResolution;
-        var renderer = pixelData.getContext('2d');
-        renderer.drawImage(image, 0, 0, outerResolution, outerResolution);
-        data = [];
-        for (var i = 0; i < outerResolution; i++) {
-            data.push([]);
-            for (var j = 0; j < outerResolution; j++) {
-                data[i].push(renderer.getImageData(j, i, 1, 1).data);
-            }
-        }
-        return data;
-    }
-    //Gets the dominant color of an image if stretched to innerResolution x innerResolution
-    function reduceImageToColor(image) {
-        var pixelData = document.createElement('canvas');
-        pixelData.width = innerResolution;
-        pixelData.height = innerResolution;
-        var renderer = pixelData.getContext('2d');
-        renderer.drawImage(image, 0, 0, innerResolution, innerResolution);
-        colorCounts = {};
-        for (var i = 0; i < innerResolution; i++) {
-            for (var j = 0; j < innerResolution; j++) {
-                var color = renderer.getImageData(j, i, 1, 1).data;
-                if (color in colorCounts) {
-                    colorCounts[color] += 1;
-                } else {
-                    colorCounts[color] = 1;
-                }
-            }
-        }
-        return JSON.parse("[" + Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b) + "]");
-    }
     //Sets all images to have no source
     for (var i = 0; i < outerResolution; i++) {
         for (var j = 0; j < outerResolution; j++) {
@@ -116,18 +119,21 @@ function makeMosaicOf(image) {
             var imageCandidateColor = reduceImageToColor(innerImageCandidate);
             for (var i = 0; i < outerResolution; i++) {
                 for (var j = 0; j < outerResolution; j++) {
-                    if (outerImageColors[i][j].map((a, index) => Math.pow(a - imageCandidateColor[index], 2)).reduce((a, b) => a + b, 0) < Math.pow(colorFaultTolerance, 2)) {
-                        document.getElementById(idForLocation(i, j)).src = innerImageCandidate.src;
+                    var currentImg = document.getElementById(idForLocation(i, j));
+                    if (currentImg.src.endsWith("null.png") && outerImageColors[i][j].map((a, index) => Math.pow(a - imageCandidateColor[index], 2)).reduce((a, b) => a + b, 0) < Math.pow(colorFaultTolerance, 2)) {
+                        currentImg.src = innerImageCandidate.src;
+                        return;
                     }
                 }
             }
-        }, 50);
-    }, 50);
+        }, 1000)
+    }, 75);
 }
 
 //Starts the program by making a mosaic of a random image
 var randomImage = document.createElement('img');
 setSourceToRandom(randomImage);
 window.setTimeout(function() {
+    console.log(randomImage.src);
     makeMosaicOf(randomImage);
-}, 50);
+}, 1000);
