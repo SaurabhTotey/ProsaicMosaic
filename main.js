@@ -13,6 +13,11 @@ mosaic.height = window.innerHeight;
 var outerResolution = 75;
 var innerResolution = Math.min(window.innerHeight, window.innerWidth) / outerResolution;
 
+//How much each inner image can differ from the overall image in terms of color
+var colorFaultTolerance = 25;
+//Whether the images can be used repeatedly for similar colors
+var allowConsecutiveRepeats = true;
+
 //How each image location translates to an ID name
 function idForLocation(row, column) {
     return "r:" + row + ";c:" + column;
@@ -52,7 +57,11 @@ function setSourceToRandom(image) {
         function(data) {
             var rnd = Math.floor(Math.random() * data.items.length);
             image.crossOrigin = "Anonymous";
-            image.src = data.items[rnd]['media']['m'].replace("_m", "_b");
+            newSource = data.items[rnd]['media']['m'].replace("_m", "_b");
+            if (newSource.includes("photo_unavailable")) {
+                throw new Error("Couldn't set image source to random: requested image was unavailable, please try again.");
+            }
+            image.src = newSource;
         }
     );
 }
@@ -95,6 +104,11 @@ function reduceImageToColor(image) {
     return JSON.parse("[" + Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b) + "]");
 }
 
+//Gets whether two colors are close enough to each other with the color difference tolerance
+function colorsWithinTolerance(firstColor, secondColor) {
+    return Math.pow(firstColor[0] - secondColor[0], 2) + Math.pow(firstColor[1] - secondColor[1], 2) + Math.pow(firstColor[2] - secondColor[2], 2) <= Math.pow(colorFaultTolerance, 2);
+}
+
 //The actual function that handles making a mosaic of an image
 function makeMosaicOf(image) {
     //Sets all images to have no source
@@ -103,8 +117,6 @@ function makeMosaicOf(image) {
             document.getElementById(idForLocation(i, j)).src = "null.png";
         }
     }
-    //How much each inner image can differ from the overall image in terms of color
-    var colorFaultTolerance = 20;
     //The colors for the image to draw
     var outerImageColors = getPixelDataForImage(image);
     //The actual part of the program that sets the mosaic
@@ -116,18 +128,22 @@ function makeMosaicOf(image) {
         var innerImageCandidate = document.createElement('img');
         setSourceToRandom(innerImageCandidate);
         window.setTimeout(function() {
-            var imageCandidateColor = reduceImageToColor(innerImageCandidate);
-            for (var i = 0; i < outerResolution; i++) {
-                for (var j = 0; j < outerResolution; j++) {
-                    var currentImg = document.getElementById(idForLocation(i, j));
-                    if (currentImg.src.endsWith("null.png") && outerImageColors[i][j].map((a, index) => Math.pow(a - imageCandidateColor[index], 2)).reduce((a, b) => a + b, 0) < Math.pow(colorFaultTolerance, 2)) {
-                        currentImg.src = innerImageCandidate.src;
-                        return;
+            try {
+                var imageCandidateColor = reduceImageToColor(innerImageCandidate);
+                for (var i = 0; i < outerResolution; i++) {
+                    for (var j = 0; j < outerResolution; j++) {
+                        var currentImg = document.getElementById(idForLocation(i, j));
+                        if (currentImg.src.endsWith("null.png") && colorsWithinTolerance(outerImageColors[i][j], imageCandidateColor)) {
+                            currentImg.src = innerImageCandidate.src;
+                            if (!allowConsecutiveRepeats) {
+                                return;
+                            }
+                        }
                     }
                 }
-            }
-        }, 1000)
-    }, 75);
+            } catch (e) {}
+        }, 500)
+    }, 50);
 }
 
 //Starts the program by making a mosaic of a random image
@@ -136,4 +152,4 @@ setSourceToRandom(randomImage);
 window.setTimeout(function() {
     console.log(randomImage.src);
     makeMosaicOf(randomImage);
-}, 1000);
+}, 500);
