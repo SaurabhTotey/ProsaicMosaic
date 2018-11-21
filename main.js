@@ -106,7 +106,11 @@ function reduceImageToColor(image) {
 
 //Gets whether two colors are close enough to each other with the color difference tolerance
 function colorsWithinTolerance(firstColor, secondColor) {
-    return Math.pow(firstColor[0] - secondColor[0], 2) + Math.pow(firstColor[1] - secondColor[1], 2) + Math.pow(firstColor[2] - secondColor[2], 2) <= Math.pow(colorFaultTolerance, 2);
+    var rMean = (firstColor[0] + secondColor[0]) / 2;
+    var rDistance = firstColor[0] - secondColor[0];
+    var gDistance = firstColor[1] - secondColor[1];
+    var bDistance = firstColor[2] - secondColor[2];
+    return (((512 + rMean) * rDistance * rDistance) >> 8) + 4 * gDistance * gDistance + (((767 - rMean) * bDistance * bDistance) >> 8) <= Math.pow(colorFaultTolerance, 2);
 }
 
 //The actual function that handles making a mosaic of an image
@@ -130,6 +134,9 @@ function makeMosaicOf(image) {
         window.setTimeout(function() {
             try {
                 var imageCandidateColor = reduceImageToColor(innerImageCandidate);
+                if (imageCandidateColor == null) {
+                    return
+                }
                 for (var i = 0; i < outerResolution; i++) {
                     for (var j = 0; j < outerResolution; j++) {
                         var currentImg = document.getElementById(idForLocation(i, j));
