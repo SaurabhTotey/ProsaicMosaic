@@ -49,21 +49,24 @@ function isMosaicComplete() {
 
 //Takes in an image and sets its source to a random image from Flickr
 function setSourceToRandom(image) {
-    $.getJSON("http://api.flickr.com/services/feeds/photos_public.gne?jsoncallback=?",
-        {
-            tagmode: "any",
-            format: "json"
-        },
-        function(data) {
-            let rnd = Math.floor(Math.random() * data.items.length);
-            image.crossOrigin = "Anonymous";
-            newSource = data.items[rnd]['media']['m'].replace("_m", "_b");
-            if (newSource.includes("photo_unavailable")) {
-                throw new Error("Couldn't set image source to random: requested image was unavailable, please try again.");
+    return new Promise(resolve => {
+        $.getJSON("http://api.flickr.com/services/feeds/photos_public.gne?jsoncallback=?",
+            {
+                tagmode: "any",
+                format: "json"
+            },
+            function (data) {
+                let rnd = Math.floor(Math.random() * data.items.length);
+                image.crossOrigin = "Anonymous";
+                newSource = data.items[rnd]['media']['m'].replace("_m", "_b");
+                if (newSource.includes("photo_unavailable")) {
+                    throw new Error("Couldn't set image source to random: requested image was unavailable, please try again.");
+                }
+                image.src = newSource;
+                resolve();
             }
-            image.src = newSource;
-        }
-    );
+        );
+    });
 }
 
 //Gets a 2d array of colors that represents the image; dimensions are outerResolution x outerResolution
@@ -124,45 +127,43 @@ function makeMosaicOf(image) {
     //The colors for the image to draw
     let outerImageColors = getPixelDataForImage(image);
     //The actual part of the program that sets the mosaic
-    let mosaicFiller = window.setInterval(function() {
+    let mosaicFiller = window.setInterval(async () => {
         if (isMosaicComplete()) {
             window.clearInterval(mosaicFiller);
             return;
         }
         let innerImageCandidate = document.createElement('img');
-        setSourceToRandom(innerImageCandidate);
-        window.setTimeout(function() {
-            try {
-                let imageCandidateColor = reduceImageToColor(innerImageCandidate);
-                // if (imageCandidateColor == null) {
-                //     return
-                // }
-                for (let i = 0; i < outerResolution; i++) {
-                    for (let j = 0; j < outerResolution; j++) {
-                        let currentImg = document.getElementById(idForLocation(i, j));
-                        if (currentImg.src.endsWith("null.png") && colorsWithinTolerance(outerImageColors[i][j], imageCandidateColor)) {
-                            currentImg.src = innerImageCandidate.src;
-                            if (!allowConsecutiveRepeats) {
-                                return;
-                            }
+        await setSourceToRandom(innerImageCandidate);
+        try {
+            let imageCandidateColor = reduceImageToColor(innerImageCandidate);
+            // if (imageCandidateColor == null) {
+            //     return
+            // }
+            for (let i = 0; i < outerResolution; i++) {
+                for (let j = 0; j < outerResolution; j++) {
+                    let currentImg = document.getElementById(idForLocation(i, j));
+                    if (currentImg.src.endsWith("null.png") && colorsWithinTolerance(outerImageColors[i][j], imageCandidateColor)) {
+                        currentImg.src = innerImageCandidate.src;
+                        if (!allowConsecutiveRepeats) {
+                            return;
                         }
                     }
                 }
-            } catch (e) {}
-        }, 500)
+            }
+        } catch (e) { }
     }, 50);
 }
 
 //Starts the program by making a mosaic of a random image
 let randomImage = document.createElement('img');
-setSourceToRandom(randomImage);
-window.setTimeout(function() {
-    console.log(randomImage.src);
+(async () => {
+    await setSourceToRandom(randomImage);    
+})()
+console.log(randomImage.src);
 
-    makeMosaicOf(randomImage);
+makeMosaicOf(randomImage);
 
-    let iconElement = document.createElement("link");
-    iconElement.rel = "icon";
-    iconElement.href = randomImage.src;
-    document.getElementsByTagName("head")[0].appendChild(iconElement);
-}, 500);
+let iconElement = document.createElement("link");
+iconElement.rel = "icon";
+iconElement.href = randomImage.src;
+document.getElementsByTagName("head")[0].appendChild(iconElement);
