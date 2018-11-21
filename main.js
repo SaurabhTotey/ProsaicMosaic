@@ -104,7 +104,11 @@ function reduceImageToColor(image) {
             }
         }
     }
-    return JSON.parse("[" + Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b) + "]");
+    let mostAbundantColor = JSON.parse("[" + Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b) + "]");
+    // if (colorCounts[mostAbundantColor] < image.width * image.height * 0.35) {
+    //     mostAbundantColor = null;
+    // }
+    return mostAbundantColor;
 }
 
 //Gets whether two colors are close enough to each other with the color difference tolerance
