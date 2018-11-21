@@ -14,7 +14,7 @@ let outerResolution = 75;
 let innerResolution = Math.min(window.innerHeight, window.innerWidth) / outerResolution;
 
 //How much each inner image can differ from the overall image in terms of color
-let colorFaultTolerance = 1;
+let colorFaultTolerance = 100;
 //Whether the images can be used repeatedly for similar colors
 let allowConsecutiveRepeats = true;
 
@@ -62,8 +62,8 @@ function setSourceToRandom(image) {
                 if (newSource.includes("photo_unavailable")) {
                     throw new Error("Couldn't set image source to random: requested image was unavailable, please try again.");
                 }
+                image.onload = () => resolve();
                 image.src = newSource;
-                resolve();
             }
         );
     });
@@ -150,20 +150,21 @@ function makeMosaicOf(image) {
                     }
                 }
             }
-        } catch (e) { }
+        } catch (e) { console.log(e); }
     }, 50);
 }
 
 //Starts the program by making a mosaic of a random image
 let randomImage = document.createElement('img');
 (async () => {
-    await setSourceToRandom(randomImage);    
-})()
-console.log(randomImage.src);
+    await setSourceToRandom(randomImage);
+    
+    console.log(randomImage.src);
 
-makeMosaicOf(randomImage);
+    makeMosaicOf(randomImage);
 
-let iconElement = document.createElement("link");
-iconElement.rel = "icon";
-iconElement.href = randomImage.src;
-document.getElementsByTagName("head")[0].appendChild(iconElement);
+    let iconElement = document.createElement("link");
+    iconElement.rel = "icon";
+    iconElement.href = randomImage.src;
+    document.getElementsByTagName("head")[0].appendChild(iconElement);
+})();
